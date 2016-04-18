@@ -144,10 +144,13 @@ function one_level!(c, totw, w_degrees; min_modularity=0.0001)
     improvement
 end
 
-function louvain(c; min_modularity=0.0001, verbose=true)
+function louvain(g; min_modularity=0.000001, verbose=false)
+    c = community(g)
     N = length(c.g.links)
     totw = total_weight(c.g)
-    tree = Array(Int, 0, 2)
+    levels = Vector{Int}()
+    level_sizes = Vector{Int}()
+
     improvement = true
     q = modularity(c, totw)
     q1 = q + 2min_modularity
@@ -167,7 +170,8 @@ function louvain(c; min_modularity=0.0001, verbose=true)
         improvement = one_level!(c, totw, w_degrees, min_modularity=min_modularity)
         q1 = modularity(c, totw)
         g = partition2graph!(c)
-        tree = vcat(tree, [collect(1:length(c.n2c)) c.n2c])
+        append!(levels, c.n2c)
+        push!(level_sizes, length(c.n2c))
         c = community(g)
         if verbose
             println(" modularity increased from ", q, " to ", q1)
@@ -175,26 +179,5 @@ function louvain(c; min_modularity=0.0001, verbose=true)
         q = q1
         level += 1
     end
-    tree
-end
-
-function tree2partition(tree)
-    levels = Vector{Int}[]
-    l = 0
-    for i=1:size(tree,1)
-        node = tree[i,1]
-        nodecomm = tree[i,2]
-        if node == 1
-            l += 1
-            resizevec!(levels, l)
-        end
-        push!(levels[l], nodecomm)
-    end
-    n2c = collect(1:length(levels[1]))
-    for l in eachindex(levels)
-        for node=1:length(levels[1])
-            n2c[node] = levels[l][n2c[node]]
-        end
-    end
-    n2c
+    levels, level_sizes
 end
